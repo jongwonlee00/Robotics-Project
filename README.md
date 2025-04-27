@@ -27,4 +27,7 @@ Your goal objects are ONLY YELLOW CUBES.
   point where you can then use the robot arm to pick-and-place the objects.
   e. Manipulation - You need to plan using the arm to pick-and-place the objects in the basket
 
+
+![](images/gradeRubric.png)
+
   
