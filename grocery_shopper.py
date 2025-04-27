@@ -78,9 +78,9 @@ lidar_offsets = lidar_offsets[83:len(lidar_offsets)-83] # Only keep lidar readin
 
 map = None
 goal_waypoints = []
-
-
-
+gripper_status="closed"
+state = "IDLE"  
+picked_up = False 
 
 
 # ------------------------------------------------------------------
@@ -142,9 +142,28 @@ def get_yellow_blob(camera):
     cy = int(np.mean(ys))  
     
     return (cx, cy)
+    
 
+def move_arm_to_pick_position():
+    # lower torso and bend arm
+    robot_parts["torso_lift_joint"].setPosition(0.1)
+    robot_parts["arm_1_joint"].setPosition(1.0)
+    robot_parts["arm_2_joint"].setPosition(0.5)
 
-gripper_status="closed"
+def move_arm_to_place_position():
+    # lift torso and straighten arm
+    robot_parts["torso_lift_joint"].setPosition(0.3)
+    robot_parts["arm_1_joint"].setPosition(0.0)
+    robot_parts["arm_2_joint"].setPosition(1.0)
+    
+def open_gripper():
+    robot_parts["gripper_left_finger_joint"].setPosition(0.045)
+    robot_parts["gripper_right_finger_joint"].setPosition(0.045)
+
+def close_gripper():
+    robot_parts["gripper_left_finger_joint"].setPosition(0.0)
+    robot_parts["gripper_right_finger_joint"].setPosition(0.0)
+
 
 # Main Loop
 while robot.step(timestep) != -1:
@@ -165,30 +184,84 @@ while robot.step(timestep) != -1:
         if left_gripper_enc.getValue()>=0.044:
             gripper_status="open"
             
-    blob_center = get_yellow_blob(camera)
-    
-    if blob_center:
-        cx, cy = blob_center
-        print(f"Yellow cube detected at (x={cx}, y={cy}) in the camera frame.")
+    if state == "IDLE":
+        blob_center = get_yellow_blob(camera)
         
-        if is_new_waypoint(cx, cy, goal_waypoints):
-            goal_waypoints.append((cx, cy))
-            
-        image_center = camera.getWidth() / 2
-        error_x = cx - image_center
-        CAMERA_FOV = math.radians(1.57)  
-        angle = (error_x / camera.getWidth()) * CAMERA_FOV
-        
-        Kp = 0.002
-        turn_speed = Kp * error_x
-        
-        vL = 0.3 * MAX_SPEED - turn_speed
-        vR = 0.3 * MAX_SPEED + turn_speed
+        if blob_center:
+            cx, cy = blob_center
+            print(f"Yellow cube detected at (x={cx}, y={cy}) in the camera frame.")
 
-    else:
-        print("No yellow cube detected.")
-        # Stop or spin to search
-        vL = 0.2 *MAX_SPEED
-        vR = 0.2 * MAX_SPEED
+            robot_pos = gps.getValues()
+            robot_x = robot_pos[0]
+            robot_y = robot_pos[2]  # Webots Z axis becomes Y here
             
+            if is_new_waypoint(robot_x, robot_y, goal_waypoints):
+                goal_waypoints.append((robot_x, robot_y))
+                print(f"Saved real-world GPS waypoint: ({robot_x:.2f}, {robot_y:.2f})")
+
+            image_center = camera.getWidth() / 2
+            error_x = cx - image_center
+            CAMERA_FOV = math.radians(1.57)
+            angle = (error_x / camera.getWidth()) * CAMERA_FOV
+
+            Kp = 0.002
+            turn_speed = Kp * error_x
+
+            vL = 0.3 * MAX_SPEED - turn_speed
+            vR = 0.3 * MAX_SPEED + turn_speed
+
+            if abs(error_x) < 10:
+                vL = 0
+                vR = 0
+                state = "PICK"
+
+        else:
+            print("No yellow cube detected. Spinning to search...")
+            vL = 0.2 * MAX_SPEED
+            vR = 0.2 * MAX_SPEED
+
+    elif state == "PICK":
+        move_arm_to_pick_position()
+        close_gripper()
+        print("Picked up object. Switching to PLACE.")
+        picked_up = True
+        state = "PLACE"
+
+    elif state == "PLACE":
+        if picked_up:
+            move_arm_to_place_position()
+            open_gripper()
+            print("Placed object. Returning to IDLE.")
+            picked_up = False
+            state = "IDLE"
+         
+    
+    
+    # blob_center = get_yellow_blob(camera)
+    
+    # if blob_center:
+        # cx, cy = blob_center
+        # print(f"Yellow cube detected at (x={cx}, y={cy}) in the camera frame.")
+        
+        # if is_new_waypoint(cx, cy, goal_waypoints):
+            # goal_waypoints.append((cx, cy))
+            
+        # image_center = camera.getWidth() / 2
+        # error_x = cx - image_center
+        # CAMERA_FOV = math.radians(1.57)  
+        # angle = (error_x / camera.getWidth()) * CAMERA_FOV
+        
+        # Kp = 0.002
+        # turn_speed = Kp * error_x
+        
+        # vL = 0.3 * MAX_SPEED - turn_speed
+        # vR = 0.3 * MAX_SPEED + turn_speed
+
+    # else:
+        # print("No yellow cube detected.")
+        # vL = 0.2 *MAX_SPEED
+        # vR = 0.2 * MAX_SPEED
+    
+    
+    
     
