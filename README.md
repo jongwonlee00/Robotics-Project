@@ -1,16 +1,23 @@
-#🛒 TIAGo Grocery Robot - Final Robotics Project#
+##FINAL ROBOTICS PROJECT##
+
+****
 
 Contributors:
 Jongwon Lee
 Anja Delzell
 Jack Toenjes
 
+****
+
 ⚠️ Note: Code must be run on our custom world file, as changes were made to the starting position of the TIAGo robot.
 
 🚀 Project Summary
+****
 Our robot implements a fully integrated pipeline combining mapping, path planning, navigation, computer vision, and manipulation. All subsystems are interdependent to enable the robot to autonomously detect, navigate to, and pick up yellow and green cubes in a grocery store environment.
 
 ✅ Core Features
+****
+
 Autonomous Mapping (Lead: Anja)
 The robot uses LiDAR to autonomously generate a map. Simultaneously, it detects yellow and green blobs and stores the robot's GPS position as an initial waypoint upon detection.
 
